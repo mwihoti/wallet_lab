@@ -7,7 +7,7 @@ RUN apt-get update && \
 
 WORKDIR /app
 COPY . .
-RUN cargo build --release
+RUN CARGO_BUILD_JOBS=1 RUSTFLAGS="-C codegen-units=1" cargo build --release
 
 # ── Stage 2: Runtime ──────────────────────────────────────────────────────────
 FROM debian:bookworm-slim
