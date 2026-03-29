@@ -34,7 +34,7 @@ function unlockStep(n) {
   el.classList.remove('locked');
   el.classList.add('active');
   el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  openSidebar(n);
+  if (window.innerWidth >= 900) openSidebar(n);
 }
 
 function copyToClipboard(targetId) {
@@ -115,8 +115,8 @@ function updateWalletTypeUI() {
     btn.classList.toggle('active', btn.dataset.type === type);
   });
 
-  // Open sidebar with step-1 info when type changes
-  openSidebar(1);
+  // Open sidebar with step-1 info when type changes (desktop only)
+  if (window.innerWidth >= 900) openSidebar(1);
 }
 
 function renderQr(text) {
@@ -227,10 +227,15 @@ function openSidebar(step) {
   document.querySelectorAll('.btn-info').forEach(b => b.classList.remove('active'));
   const btn = document.querySelector(`.btn-info[data-step="${step}"]`);
   if (btn) btn.classList.add('active');
+
+  if (window.innerWidth < 900) {
+    $('sidebar-backdrop').classList.add('visible');
+  }
 }
 
 function closeSidebar() {
   $('info-sidebar').classList.remove('visible');
+  $('sidebar-backdrop').classList.remove('visible');
   state.activeSidebarStep = null;
   document.querySelectorAll('.btn-info').forEach(b => b.classList.remove('active'));
 }
@@ -240,11 +245,15 @@ document.querySelectorAll('.btn-info').forEach(btn => {
 });
 $('btn-sidebar-close').addEventListener('click', closeSidebar);
 
+$('sidebar-backdrop').addEventListener('click', closeSidebar);
+
 window.addEventListener('DOMContentLoaded', () => {
-  const activeSteps = [...document.querySelectorAll('.step.active')];
-  if (activeSteps.length > 0) {
-    const last = activeSteps[activeSteps.length - 1];
-    openSidebar(parseInt(last.dataset.step));
+  if (window.innerWidth >= 900) {
+    const activeSteps = [...document.querySelectorAll('.step.active')];
+    if (activeSteps.length > 0) {
+      const last = activeSteps[activeSteps.length - 1];
+      openSidebar(parseInt(last.dataset.step));
+    }
   }
 });
 

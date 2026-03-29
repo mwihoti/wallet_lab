@@ -694,24 +694,61 @@ tr:last-child td { border-bottom: none; }
   margin-left: 0.3rem;
 }
 
+/* ── Mobile backdrop ──────────────────────────── */
+.sidebar-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+  z-index: 99;
+}
+.sidebar-backdrop.visible { display: block; }
+
 /* ── Responsive ───────────────────────────────── */
 @media (max-width: 900px) {
   .info-sidebar {
     position: fixed;
     top: 0; right: 0;
-    width: 300px;
+    width: min(320px, 90vw);
     height: 100vh;
     max-height: 100vh;
     border-radius: 0;
     border-left: 1px solid var(--border);
     z-index: 100;
     box-shadow: -4px 0 20px rgba(0,0,0,0.4);
+    transform: translateX(100%);
+    transition: transform 0.25s ease;
+    display: block !important; /* always in DOM, hidden via transform */
   }
+  .info-sidebar.visible {
+    transform: translateX(0);
+  }
+
+  /* table scrolls horizontally instead of overflowing */
+  .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+  /* UTXO txid column truncate */
+  td:first-child { max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 }
 
-@media (max-width: 540px) {
+@media (max-width: 640px) {
+  header h1 { font-size: 1.4rem; }
+  header .subtitle { font-size: 0.85rem; }
+
+  .lab-layout { padding: 1rem 0.75rem 3rem; }
+
+  .wallet-type-tabs { gap: 0.35rem; }
+  .tab-label { font-size: 0.7rem; }
+  .tab-sub   { display: none; } /* hide "m..." prefix on tiny screens */
+
+  .addr-row { flex-wrap: wrap; }
+  .addr-type-label { width: auto; }
+
   .malleable-compare { flex-direction: column; }
   .malleable-compare .arrow { align-self: center; transform: rotate(90deg); }
+
   .field-row { flex-direction: column; gap: 0; }
-  .info-sidebar { width: 100%; right: 0; }
+
+  .copy-row { flex-wrap: wrap; }
+  .copy-row code { min-width: 0; }
 }

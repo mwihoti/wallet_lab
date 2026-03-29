@@ -134,12 +134,14 @@
           <div class="polling-status" id="utxo-polling-status">
             <span class="spinner"></span> Watching for incoming coins...
           </div>
+          <div class="table-scroll">
           <table id="utxo-table" class="hidden">
             <thead>
               <tr><th>TXID</th><th>Output</th><th>Amount (sat)</th><th>Status</th></tr>
             </thead>
             <tbody id="utxo-tbody"></tbody>
           </table>
+          </div>
         </div>
         <button id="btn-to-step3" class="btn-next hidden">Next: Send Payment &rarr;</button>
       </section>
@@ -255,6 +257,9 @@
       </section>
 
     </main>
+
+    <!-- ── Mobile backdrop ── -->
+    <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
 
     <!-- ── RIGHT: Info Sidebar ── -->
     <aside class="info-sidebar" id="info-sidebar">
