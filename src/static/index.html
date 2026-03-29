@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bitcoin Wallet Lab</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <header>
+    <h1>Bitcoin Wallet Lab</h1>
+    <p class="subtitle">Build and broadcast a real Bitcoin testnet transaction — step by step</p>
+    <span class="badge">Testnet4</span>
+  </header>
+
+  <div class="lab-layout">
+
+    <!-- ── LEFT: Steps ── -->
+    <main class="steps-col">
+
+      <!-- STEP 1: Create Wallet -->
+      <section class="step active" id="step-1" data-step="1">
+        <div class="step-header">
+          <span class="step-number">1</span>
+          <h2>Create Wallet</h2>
+          <button class="btn-info" data-step="1" title="Learn about this step">?</button>
+        </div>
+        <p>Choose a wallet type, then generate your keys.</p>
+
+        <!-- Wallet type tabs -->
+        <div class="wallet-type-tabs" id="wallet-type-tabs">
+          <button class="tab active" data-type="p2pkh">
+            <span class="tab-icon">🏛</span>
+            <span class="tab-label">Legacy</span>
+            <span class="tab-sub">P2PKH</span>
+          </button>
+          <button class="tab" data-type="p2sh_p2wpkh">
+            <span class="tab-icon">🔀</span>
+            <span class="tab-label">Nested SegWit</span>
+            <span class="tab-sub">P2SH-P2WPKH</span>
+          </button>
+          <button class="tab" data-type="p2wpkh">
+            <span class="tab-icon">⚡</span>
+            <span class="tab-label">Native SegWit</span>
+            <span class="tab-sub">P2WPKH · bech32</span>
+          </button>
+        </div>
+
+        <button id="btn-generate" class="btn-primary">Generate Wallet</button>
+
+        <div id="wallet-result" class="result-box hidden">
+          <!-- Address section (changes per type) -->
+          <div class="field">
+            <label>
+              Address
+              <span id="addr-type-badge" class="label-tag p2pkh">P2PKH</span>
+            </label>
+            <div class="copy-row">
+              <code id="wallet-address"></code>
+              <button class="btn-copy" data-target="wallet-address">Copy</button>
+            </div>
+          </div>
+
+          <!-- QR code (native SegWit only) -->
+          <div id="qr-section" class="hidden">
+            <div class="field">
+              <label>QR Code</label>
+              <div id="qr-code" class="qr-container"></div>
+            </div>
+          </div>
+
+          <!-- All addresses (collapsed) -->
+          <details id="all-addresses-details">
+            <summary>All address types for this key</summary>
+            <div class="all-addresses">
+              <div class="addr-row">
+                <span class="addr-type-label legacy">Legacy P2PKH</span>
+                <code id="addr-p2pkh" class="addr-value"></code>
+                <button class="btn-copy" data-target="addr-p2pkh">Copy</button>
+              </div>
+              <div class="addr-row">
+                <span class="addr-type-label nested">Nested SegWit</span>
+                <code id="addr-p2sh" class="addr-value"></code>
+                <button class="btn-copy" data-target="addr-p2sh">Copy</button>
+              </div>
+              <div class="addr-row">
+                <span class="addr-type-label native">Native SegWit</span>
+                <code id="addr-p2wpkh" class="addr-value"></code>
+                <button class="btn-copy" data-target="addr-p2wpkh">Copy</button>
+              </div>
+            </div>
+          </details>
+
+          <div class="field">
+            <label>WIF Private Key</label>
+            <div class="copy-row">
+              <code id="wallet-wif" class="blurred"></code>
+              <button class="btn-toggle" data-target="wallet-wif">Show</button>
+              <button class="btn-copy" data-target="wallet-wif">Copy</button>
+            </div>
+            <small class="warning">⚠ Never share your private key. This is testnet — no real money.</small>
+          </div>
+          <div class="field collapsible">
+            <label>Public Key (hex) <button class="btn-tiny" id="toggle-pubkey">show</button></label>
+            <code id="wallet-pubkey" class="hidden"></code>
+          </div>
+        </div>
+        <button id="btn-to-step2" class="btn-next hidden">Next: Receive Coins &rarr;</button>
+      </section>
+
+      <!-- STEP 2: Receive Coins -->
+      <section class="step locked" id="step-2" data-step="2">
+        <div class="step-header">
+          <span class="step-number">2</span>
+          <h2>Receive Testnet Coins</h2>
+          <button class="btn-info" data-step="2" title="Learn about this step">?</button>
+        </div>
+        <p>Use a testnet faucet to send free test coins to your <span id="step2-type-label">address</span>.</p>
+        <p class="faucet-note">Copy your address and paste it into one of these faucets:</p>
+        <div class="faucet-links">
+          <a href="https://coinfaucet.eu/en/btc-testnet/" target="_blank" class="btn-secondary">coinfaucet.eu &rarr;</a>
+          <a href="https://bitcoinfaucet.uo1.net/" target="_blank" class="btn-secondary">bitcoinfaucet.uo1.net &rarr;</a>
+          <a href="https://testnet4.com/faucet/" target="_blank" class="btn-secondary">testnet4.com &rarr;</a>
+        </div>
+        <small class="warning">If one faucet is offline, try the next.</small>
+        <div class="field">
+          <label>Your <span id="step2-addr-label">Address</span></label>
+          <div class="copy-row">
+            <code id="receive-address"></code>
+            <button class="btn-copy" data-target="receive-address">Copy</button>
+          </div>
+        </div>
+        <div id="utxo-section">
+          <div class="polling-status" id="utxo-polling-status">
+            <span class="spinner"></span> Watching for incoming coins...
+          </div>
+          <table id="utxo-table" class="hidden">
+            <thead>
+              <tr><th>TXID</th><th>Output</th><th>Amount (sat)</th><th>Status</th></tr>
+            </thead>
+            <tbody id="utxo-tbody"></tbody>
+          </table>
+        </div>
+        <button id="btn-to-step3" class="btn-next hidden">Next: Send Payment &rarr;</button>
+      </section>
+
+      <!-- STEP 3: Send Payment -->
+      <section class="step locked" id="step-3" data-step="3">
+        <div class="step-header">
+          <span class="step-number">3</span>
+          <h2>Send Payment</h2>
+          <button class="btn-info" data-step="3" title="Learn about this step">?</button>
+        </div>
+        <p>Available balance: <strong id="balance-display">0 sat</strong></p>
+        <div id="lab-wallet-notice" class="lab-notice hidden">
+          <span class="lab-notice-icon">🏦</span>
+          <div>
+            <strong>Lab wallet pre-filled as recipient</strong>
+            <p>Sending to the lab's shared address so you can see both sides of the transaction.</p>
+          </div>
+        </div>
+        <form id="send-form">
+          <div class="field">
+            <label for="recipient">Recipient Address</label>
+            <input type="text" id="recipient" placeholder="any testnet address (m.., 2.., tb1q..)" />
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label for="amount">Amount (satoshis)</label>
+              <input type="number" id="amount" placeholder="e.g. 10000" min="1000" />
+            </div>
+            <div class="field">
+              <label for="fee">Fee (satoshis)</label>
+              <input type="number" id="fee" value="2000" min="500" />
+            </div>
+          </div>
+          <button type="submit" id="btn-send" class="btn-primary">Build &amp; Broadcast Transaction</button>
+        </form>
+        <div id="tx-result" class="result-box hidden">
+          <div class="field">
+            <label>Transaction ID</label>
+            <div class="copy-row">
+              <code id="sent-txid"></code>
+              <button class="btn-copy" data-target="sent-txid">Copy</button>
+            </div>
+          </div>
+          <details>
+            <summary>Raw Transaction Hex</summary>
+            <code id="sent-raw-hex" class="raw-hex"></code>
+          </details>
+        </div>
+        <button id="btn-to-step4" class="btn-next hidden">Next: Track Confirmation &rarr;</button>
+      </section>
+
+      <!-- STEP 4: Track Confirmation -->
+      <section class="step locked" id="step-4" data-step="4">
+        <div class="step-header">
+          <span class="step-number">4</span>
+          <h2>Track Confirmation</h2>
+          <button class="btn-info" data-step="4" title="Learn about this step">?</button>
+        </div>
+        <div class="field">
+          <label>Transaction ID</label>
+          <code id="track-txid"></code>
+          <a id="explorer-link" href="#" target="_blank" class="btn-tiny">View on Explorer &rarr;</a>
+        </div>
+        <div class="confirmation-tracker">
+          <div id="confirmation-status" class="conf-badge unconfirmed">Unconfirmed</div>
+          <div id="confirmation-count" class="conf-count">Waiting for block...</div>
+          <div class="spinner" id="conf-spinner"></div>
+        </div>
+        <div class="conf-explainer">
+          <p>Bitcoin blocks are mined roughly every <strong>10 minutes</strong>. Your transaction sits in the
+          <em>mempool</em> (a waiting room) until a miner picks it up and includes it in the next block.</p>
+          <p>On testnet this can take anywhere from <strong>1 to 30 minutes</strong> — just wait, it will arrive.</p>
+        </div>
+        <button id="btn-to-step5" class="btn-next">Run Malleability Demo &rarr;</button>
+      </section>
+
+      <!-- STEP 5: Malleability Demo -->
+      <section class="step locked" id="step-5" data-step="5">
+        <div class="step-header">
+          <span class="step-number">5</span>
+          <h2>Signature Malleability Demo</h2>
+          <button class="btn-info" data-step="5" title="Learn about this step">?</button>
+        </div>
+        <p class="explainer">
+          ECDSA signatures contain an <code>(r, s)</code> pair. Flipping <code>s → N - s</code>
+          produces a different valid signature — and a completely different TXID —
+          even though the transaction is identical. This is why SegWit was invented.
+        </p>
+        <button id="btn-run-demo" class="btn-primary">Run Demo</button>
+        <div id="demo-result" class="result-box hidden">
+          <div class="malleable-compare">
+            <div class="original">
+              <h3>Original</h3>
+              <label>TXID</label><code id="orig-txid"></code>
+              <label>s value</label><code id="orig-s"></code>
+              <label>DER Signature</label><code id="orig-der"></code>
+            </div>
+            <div class="arrow">&rarr;</div>
+            <div class="malleated">
+              <h3>Malleated</h3>
+              <label>TXID</label><code id="mall-txid" class="highlight-diff"></code>
+              <label>s' = N - s</label><code id="mall-s" class="highlight-diff"></code>
+              <label>DER Signature</label><code id="mall-der" class="highlight-diff"></code>
+            </div>
+          </div>
+          <div class="verdict">
+            <span class="valid-badge">Both signatures are valid ✓</span>
+            <p>Same coins moved. Same inputs and outputs. Two different TXIDs.</p>
+            <p>SegWit fixed this by moving signatures outside the data that's hashed for the TXID.</p>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- ── RIGHT: Info Sidebar ── -->
+    <aside class="info-sidebar" id="info-sidebar">
+      <div class="sidebar-header">
+        <span class="sidebar-icon">💡</span>
+        <h3 id="sidebar-title">Learn</h3>
+        <button class="btn-sidebar-close" id="btn-sidebar-close">&times;</button>
+      </div>
+      <div class="sidebar-content" id="sidebar-content"></div>
+    </aside>
+
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <!-- ── Info panel templates ── -->
+  <template id="info-step-1">
+    <div class="info-section">
+      <h4>🏛 Legacy — P2PKH <span class="since-badge">Since 2009</span></h4>
+      <p>The original Bitcoin address format, used since Satoshi's genesis block. Addresses start with <strong>1</strong> on mainnet, <strong>m</strong> or <strong>n</strong> on testnet.</p>
+      <div class="info-term">
+        <span class="term-label">How it works</span>
+        <span class="term-def">To spend coins, you prove ownership by providing your signature and public key. The network hashes your pubkey and checks it matches the address. <strong>Pay to Public Key Hash.</strong></span>
+      </div>
+      <div class="info-term">
+        <span class="term-label">Advantage</span>
+        <span class="term-def">Maximum compatibility — every wallet, exchange, and node since 2009 supports it.</span>
+      </div>
+      <div class="info-term">
+        <span class="term-label">Disadvantage</span>
+        <span class="term-def">Larger transaction sizes (more bytes = higher fees). Does not benefit from SegWit. Vulnerable to transaction malleability (see Step 5).</span>
+      </div>
+    </div>
+    <div class="info-section">
+      <h4>🔀 Nested SegWit — P2SH-P2WPKH <span class="since-badge">Since 2012/2017</span></h4>
+      <p>A compatibility bridge: a SegWit script hidden inside a classic P2SH wrapper. Addresses start with <strong>3</strong> on mainnet, <strong>2</strong> on testnet.</p>
+      <div class="info-term">
+        <span class="term-label">How it works</span>
+        <span class="term-def">The scriptPubKey locks funds to a hash of a "redeem script." When spending, you reveal the redeem script (which is itself a SegWit script), then provide the witness data.</span>
+      </div>
+      <div class="info-term">
+        <span class="term-label">Advantage</span>
+        <span class="term-def">Lower fees than P2PKH. Works with older wallets that don't natively understand SegWit. Good migration path.</span>
+      </div>
+      <div class="info-term">
+        <span class="term-label">Disadvantage</span>
+        <span class="term-def">Still wastes space on the redeem script. Less efficient than native SegWit.</span>
+      </div>
+    </div>
+    <div class="info-section">
+      <h4>⚡ Native SegWit — P2WPKH (Bech32) <span class="since-badge">Since 2017</span></h4>
+      <p>The modern standard. Addresses start with <strong>bc1q</strong> on mainnet, <strong>tb1q</strong> on testnet. Uses bech32 encoding — lowercase letters and numbers, no ambiguous characters.</p>
+      <div class="info-term">
+        <span class="term-label">How it works</span>
+        <span class="term-def">Witness data (signatures) is stored separately from the transaction body. TXID is computed without the witness — making it <strong>immune to malleability</strong>.</span>
+      </div>
+      <div class="info-term">
+        <span class="term-label">Advantage</span>
+        <span class="term-def">Lowest fees (~40% cheaper than P2PKH). No malleability. Better error detection via bech32 checksum. QR codes scan more reliably.</span>
+      </div>
+      <div class="info-term">
+        <span class="term-label">Disadvantage</span>
+        <span class="term-def">A few older wallets/exchanges don't support it (increasingly rare in 2024).</span>
+      </div>
+    </div>
+    <div class="info-section">
+      <h4>🔑 Same Key — Three Addresses</h4>
+      <p>All three address types are derived from your <strong>same single private key</strong>. The private key gives you full control over all three. This is not unique to the lab — any wallet can do this.</p>
+      <div class="info-flow">
+        Private Key → Public Key → hash160(pubkey) → P2PKH address<br>
+        ↳ hash160(OP_0 + hash160(pubkey)) → P2SH address<br>
+        ↳ bech32(0, hash160(pubkey)) → P2WPKH address
+      </div>
+    </div>
+  </template>
+
+  <template id="info-step-2">
+    <div class="info-section">
+      <h4>🪙 What is a UTXO?</h4>
+      <p>Bitcoin doesn't store "balances." Instead it tracks <strong>UTXOs</strong> — Unspent Transaction Outputs — like physical coins in your pocket.</p>
+      <p>When you receive 50,000 sat, you now hold one UTXO worth 50,000 sat. When you spend it, that UTXO is destroyed and new ones are created.</p>
+      <div class="info-term">
+        <span class="term-label">UTXO</span>
+        <span class="term-def">Unspent Transaction Output. A specific chunk of bitcoin that has been received but not yet spent. The "coins" in your wallet are a set of UTXOs.</span>
+      </div>
+    </div>
+    <div class="info-section">
+      <h4>⏳ Confirmed vs Unconfirmed</h4>
+      <p><strong>Unconfirmed</strong> — your transaction is in the mempool. Valid and visible, but not yet in a block.</p>
+      <p><strong>Confirmed</strong> — a miner included it in a block. Each block on top adds another confirmation.</p>
+    </div>
+    <div class="info-section">
+      <h4>🚰 Testnet Faucets</h4>
+      <p>Testnet coins have <strong>zero real-world value</strong>. Faucets give them away free for testing. If one is down, try another.</p>
+      <p>All three address types are accepted by testnet faucets — just paste the address shown above.</p>
+    </div>
+  </template>
+
+  <template id="info-step-3">
+    <div class="info-section">
+      <h4>📤 How a Bitcoin Transaction Works</h4>
+      <p>A transaction has <strong>inputs</strong> (UTXOs you're spending) and <strong>outputs</strong> (who gets the coins). You must spend the entire input — any leftover goes back as <em>change</em>.</p>
+      <div class="info-flow">
+        Input (50,000 sat) → Recipient (10,000) + Change (38,000) + Fee (2,000)
+      </div>
+    </div>
+    <div class="info-section">
+      <h4>✍ Signatures by Wallet Type</h4>
+      <div class="info-term">
+        <span class="term-label">P2PKH</span>
+        <span class="term-def">Signature goes in scriptSig field of the input. Included in TXID hash.</span>
+      </div>
+      <div class="info-term">
+        <span class="term-label">P2SH-P2WPKH</span>
+        <span class="term-def">scriptSig contains only the redeem script. Signature goes in witness data — outside the TXID hash.</span>
+      </div>
+      <div class="info-term">
+        <span class="term-label">P2WPKH</span>
+        <span class="term-def">scriptSig is empty. Signature is entirely in witness data. Maximum malleability protection.</span>
+      </div>
+    </div>
+    <div class="info-section">
+      <h4>💸 Transaction Fees</h4>
+      <p>Fee = sum(inputs) - sum(outputs). On testnet, any fee works since there's no competition for block space.</p>
+    </div>
+    <div class="info-section">
+      <h4>🏦 Lab Wallet</h4>
+      <p>The recipient is pre-filled with the lab's shared address so you can observe coins arriving on the other side.</p>
+    </div>
+  </template>
+
+  <template id="info-step-4">
+    <div class="info-section">
+      <h4>⛏ The Mempool &amp; Mining</h4>
+      <p>Once broadcast, your transaction enters the <strong>mempool</strong>. Miners pick transactions (usually highest fee first), bundle them into a block, and compete to solve a proof-of-work puzzle.</p>
+    </div>
+    <div class="info-section">
+      <h4>⏱ How Long to Wait?</h4>
+      <p>Bitcoin targets <strong>one block every 10 minutes</strong>, adjusting difficulty automatically. On testnet, times are less regular — sometimes 2 minutes, sometimes 30.</p>
+      <div class="info-term">
+        <span class="term-label">1 Confirmation</span>
+        <span class="term-def">Included in 1 block. Sufficient for testnet and small mainnet amounts.</span>
+      </div>
+      <div class="info-term">
+        <span class="term-label">6 Confirmations</span>
+        <span class="term-def">Traditional "safe" threshold for large mainnet amounts (~1 hour).</span>
+      </div>
+    </div>
+    <div class="info-section">
+      <h4>🔗 Block Height</h4>
+      <p>Every block is numbered from genesis (block 0). When confirmed, you'll see which block your transaction landed in.</p>
+    </div>
+  </template>
+
+  <template id="info-step-5">
+    <div class="info-section">
+      <h4>📐 ECDSA Signatures</h4>
+      <p>Bitcoin uses ECDSA on secp256k1 to sign transactions. Every signature produces <code>(r, s)</code>:</p>
+      <ul class="info-list">
+        <li><strong>r</strong> — derived from a random nonce point on the curve</li>
+        <li><strong>s</strong> — computed from your private key, message hash, and r</li>
+      </ul>
+    </div>
+    <div class="info-section">
+      <h4>🔄 Why s → N - s Is Valid</h4>
+      <p>The secp256k1 curve has order <strong>N</strong>. Due to the curve's symmetry, verification works for both <code>s</code> and <code>N - s</code>.</p>
+      <div class="info-flow">N = FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141</div>
+      <p>Both are perfectly valid signatures that the network accepts.</p>
+    </div>
+    <div class="info-section">
+      <h4>💥 The Mt. Gox Problem (2014)</h4>
+      <p>Pre-SegWit TXID = hash(entire tx including signature). Flip s → different signature → different TXID for the exact same payment. Attackers could intercept, tweak, rebroadcast — then claim the original TXID "never confirmed." This caused billions in losses at Mt. Gox.</p>
+    </div>
+    <div class="info-section">
+      <h4>🛡 SegWit Fix</h4>
+      <p>SegWit moved signatures to a separate <em>witness</em> field excluded from TXID hashing. Change the signature all you want — the TXID is stable. Problem permanently solved.</p>
+      <div class="info-term">
+        <span class="term-label">P2PKH</span>
+        <span class="term-def">Still malleable — signature is in the data hashed for TXID.</span>
+      </div>
+      <div class="info-term">
+        <span class="term-label">P2WPKH / P2SH-P2WPKH</span>
+        <span class="term-def">Not malleable — signature is in witness, outside the TXID hash.</span>
+      </div>
+    </div>
+  </template>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script src="/app.js"></script>
+</body>
+</html>

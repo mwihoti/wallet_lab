@@ -1,0 +1,13 @@
+[package]
+name = "bitcoin_dojo"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+num-bigint = "0.4"
+rand = "0.10"
+sha2 = "0.10"
+lazy_static = "1.5"
+hex = "0.4"
+hmac = "0.12"
+ripemd = "0.1"
