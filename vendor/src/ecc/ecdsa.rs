@@ -133,7 +133,18 @@ pub fn sign(private_key: &PrivateKey, message_hash: &[u8]) -> Signature {
     let r_times_secret = &r * private_key.scalar();
     let z_plus_r_times_secret = &z + &r_times_secret;
     let s = &k_inv * &z_plus_r_times_secret;
-    Signature { r, s}  
+
+    // BIP-62 low-S normalization: if s > n/2, use n - s instead.
+    // Bitcoin's mempool rejects signatures with high S values.
+    let n = &*SECP256K1_N;
+    let half_n = n / BigUint::from(2u32);
+    let s = if s.value() > &half_n {
+        Scalar::new(n - s.value())
+    } else {
+        s
+    };
+
+    Signature { r, s }
 }
 
 pub fn verify(public_key: &PublicKey, message_hash: &[u8], signature: &Signature) -> bool {

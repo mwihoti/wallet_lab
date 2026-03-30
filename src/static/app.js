@@ -139,6 +139,7 @@ document.querySelectorAll('.wallet-type-tabs .tab').forEach(btn => {
   btn.addEventListener('click', () => {
     state.walletType = btn.dataset.type;
     updateWalletTypeUI();
+    updateFeeEstimate();
   });
 });
 
@@ -394,7 +395,23 @@ $('btn-to-step3').addEventListener('click', () => {
     $('lab-wallet-notice').classList.remove('hidden');
   }
   unlockStep(3);
+  updateFeeEstimate();
 });
+
+// ── Step 3: Fee estimation ────────────────────────────────────────────────────
+// Typical 1-input 2-output vbyte sizes per wallet type
+const TX_VBYTES = { p2pkh: 226, p2sh_p2wpkh: 198, p2wpkh: 141 };
+
+function updateFeeEstimate() {
+  const rate = parseInt($('fee-rate').value, 10) || 1;
+  const vbytes = TX_VBYTES[state.walletType] || 226;
+  const fee = Math.ceil(rate * vbytes);
+  $('est-vbytes').textContent = vbytes;
+  $('est-fee').textContent = fee.toLocaleString();
+  $('fee').value = fee;
+}
+
+$('fee-rate').addEventListener('input', updateFeeEstimate);
 
 // ── Step 3: Send Payment ──────────────────────────────────────────────────────
 $('send-form').addEventListener('submit', async e => {

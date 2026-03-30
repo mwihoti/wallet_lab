@@ -117,6 +117,7 @@ header .subtitle { color: var(--muted); margin-top: 0.25rem; }
 }
 .field-row { display: flex; gap: 1rem; margin-top: 1rem; }
 .field-row .field { flex: 1; margin-top: 0; }
+.fee-estimate-row { display: flex; gap: 1.5rem; margin-top: 0.5rem; font-size: 0.9rem; color: var(--text-secondary, #888); }
 
 code {
   display: block;

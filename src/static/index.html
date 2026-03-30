@@ -120,8 +120,8 @@
         <p class="faucet-note">Copy your address and paste it into one of these faucets:</p>
         <div class="faucet-links">
           <a href="https://coinfaucet.eu/en/btc-testnet/" target="_blank" class="btn-secondary">coinfaucet.eu &rarr;</a>
-          <a href="https://bitcoinfaucet.uo1.net/" target="_blank" class="btn-secondary">bitcoinfaucet.uo1.net &rarr;</a>
-          <a href="https://testnet4.com/faucet/" target="_blank" class="btn-secondary">testnet4.com &rarr;</a>
+          <a href="https://mempool.space/testnet4/faucet" target="_blank" class="btn-secondary">mempool.space &rarr;</a>
+          <a href="https://testnetbtc.com/" target="_blank" class="btn-secondary">testnetbtc.com &rarr;</a>
         </div>
         <small class="warning">If one faucet is offline, try the next.</small>
         <div class="field">
@@ -173,9 +173,14 @@
               <input type="number" id="amount" placeholder="e.g. 10000" min="1000" />
             </div>
             <div class="field">
-              <label for="fee">Fee (satoshis)</label>
-              <input type="number" id="fee" value="2000" min="500" />
+              <label for="fee-rate">Fee Rate (sat/vByte)</label>
+              <input type="number" id="fee-rate" value="1" min="1" />
             </div>
+          </div>
+          <div class="fee-estimate-row">
+            <span>Est. tx size: <strong id="est-vbytes">—</strong> vBytes</span>
+            <span>Fee: <strong id="est-fee">—</strong> sats</span>
+            <input type="hidden" id="fee" />
           </div>
           <button type="submit" id="btn-send" class="btn-primary">Build &amp; Broadcast Transaction</button>
         </form>
