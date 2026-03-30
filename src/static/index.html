@@ -4,6 +4,23 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Bitcoin Wallet Lab</title>
+  <meta name="description" content="Interactive Bitcoin testnet wallet showing what happens behind the scenes — key generation, ECDSA signing, UTXO model, SegWit, and transaction malleability. Built with Rust from scratch." />
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="Bitcoin Wallet Lab" />
+  <meta property="og:description" content="Generate a wallet, receive coins, sign and broadcast a real testnet transaction — then see the cryptography that makes it work. secp256k1, ECDSA, SegWit, UTXOs." />
+  <meta property="og:url" content="https://wallet-lab.onrender.com" />
+  <meta property="og:type" content="website" />
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="Bitcoin Wallet Lab" />
+  <meta name="twitter:description" content="Interactive Bitcoin testnet wallet — ECDSA, SegWit, UTXOs, malleability demo. Cryptography implemented from scratch in Rust." />
+  <meta name="twitter:site" content="@mwihotii" />
+  <meta name="twitter:creator" content="@mwihotii" />
+
+  <link rel="canonical" href="https://wallet-lab.onrender.com" />
+
   <link rel="stylesheet" href="/style.css" />
   <!-- Cloudflare Web Analytics --><script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "d019d932e45443a4a8d053186883cffc"}'></script><!-- End Cloudflare Web Analytics -->
 </head>
@@ -291,6 +308,12 @@
   </div>
 
   <div id="toast" class="toast hidden"></div>
+
+  <footer class="site-footer">
+    <span>Built by <a href="https://x.com/mwihotii" target="_blank" rel="noopener">@mwihotii</a></span>
+    <span class="footer-sep">·</span>
+    <a href="https://github.com/mwihoti/wallet_lab" target="_blank" rel="noopener">GitHub</a>
+  </footer>
 
   <!-- ── Info panel templates ── -->
   <template id="info-step-1">

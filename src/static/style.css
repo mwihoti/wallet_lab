@@ -789,3 +789,13 @@ tr:last-child td { border-bottom: none; }
   .copy-row { flex-wrap: wrap; }
   .copy-row code { min-width: 0; }
 }
+
+.site-footer {
+  text-align: center;
+  padding: 1.5rem 1rem;
+  font-size: 0.85rem;
+  color: var(--text-muted, #888);
+}
+.site-footer a { color: var(--accent, #f7931a); text-decoration: none; }
+.site-footer a:hover { text-decoration: underline; }
+.footer-sep { margin: 0 0.5rem; }
