@@ -143,6 +143,17 @@
             <tbody id="utxo-tbody"></tbody>
           </table>
           </div>
+          <div id="utxo-status-legend" class="status-legend hidden">
+            <div class="legend-item legend-pending">
+              <strong><span class="spinner-small"></span> Pending — what this means</strong>
+              <p>Your transaction has been broadcast and is sitting in the <strong>mempool</strong> — a waiting room that every node keeps. It is valid and visible to the whole network, but no miner has bundled it into a block yet.</p>
+              <p><strong>How long?</strong> Testnet4 produces a block roughly every <strong>10 minutes</strong>. With a 1 sat/vByte fee your transaction is typically picked up within <strong>1–3 blocks (10–30 min)</strong>. This page checks every 5 seconds and will update automatically.</p>
+            </div>
+            <div class="legend-item legend-confirmed">
+              <strong>&#10003; Confirmed — what this means</strong>
+              <p>A miner included your transaction in a block and that block was added to the chain. The block number shown is its permanent position in the blockchain. Your coins are now spendable.</p>
+            </div>
+          </div>
         </div>
         <button id="btn-to-step3" class="btn-next hidden">Next: Send Payment &rarr;</button>
       </section>

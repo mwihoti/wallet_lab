@@ -271,6 +271,33 @@ tr:last-child td { border-bottom: none; }
 .confirmed-yes { color: var(--green); }
 .confirmed-no  { color: var(--yellow); }
 
+/* ── Status badges ────────────────────────────── */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+}
+.status-confirmed { background: rgba(98,196,98,0.15); color: var(--green); }
+.status-pending   { background: rgba(255,165,0,0.12); color: var(--yellow); }
+.status-detail    { color: var(--muted); font-size: 0.75rem; }
+
+/* ── Status legend ────────────────────────────── */
+.status-legend { margin-top: 1rem; display: flex; flex-direction: column; gap: 0.75rem; }
+.legend-item {
+  padding: 0.85rem 1rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  line-height: 1.55;
+}
+.legend-item p { margin: 0.35rem 0 0; }
+.legend-item strong { display: block; margin-bottom: 0.2rem; }
+.legend-pending  { border-left: 3px solid var(--yellow); background: rgba(255,165,0,0.06); }
+.legend-confirmed{ border-left: 3px solid var(--green);  background: rgba(98,196,98,0.06); }
+
 /* ── Spinner ──────────────────────────────────── */
 .spinner {
   display: inline-block;
@@ -281,6 +308,15 @@ tr:last-child td { border-bottom: none; }
   animation: spin 0.7s linear infinite;
   vertical-align: middle;
   margin-right: 0.4rem;
+}
+.spinner-small {
+  display: inline-block;
+  width: 9px; height: 9px;
+  border: 1.5px solid var(--border);
+  border-top-color: var(--yellow);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  vertical-align: middle;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 

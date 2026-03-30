@@ -372,15 +372,22 @@ function renderUtxoTable(utxos) {
   tbody.innerHTML = '';
   utxos.forEach(u => {
     const confirmed = u.status?.confirmed;
+    const blockHeight = u.status?.block_height;
+    const statusCell = confirmed
+      ? `<span class="status-badge status-confirmed">&#10003; Confirmed</span><br><small class="status-detail">Block #${blockHeight}</small>`
+      : `<span class="status-badge status-pending"><span class="spinner-small"></span> Pending</span><br><small class="status-detail">In mempool — not yet in a block</small>`;
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td>${u.txid.slice(0,12)}...${u.txid.slice(-8)}</td>
+      <td><a href="https://mempool.space/testnet4/tx/${u.txid}" target="_blank">${u.txid.slice(0,10)}…${u.txid.slice(-6)}</a></td>
       <td>#${u.vout}</td>
       <td>${u.value.toLocaleString()}</td>
-      <td class="${confirmed ? 'confirmed-yes' : 'confirmed-no'}">${confirmed ? 'Confirmed' : 'Pending'}</td>
+      <td>${statusCell}</td>
     `;
     tbody.appendChild(tr);
   });
+
+  const hasPending = utxos.some(u => !u.status?.confirmed);
+  $('utxo-status-legend').classList.toggle('hidden', !hasPending);
 }
 
 // Advance to step 3
