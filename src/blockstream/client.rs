@@ -111,3 +111,59 @@ pub async fn fetch_tx_status(
         .await
         .map_err(|e| AppError::BlockstreamError(e.to_string()))
 }
+
+/// Recommended fee rates in sat/vB, from mempool.space's `/v1/fees/recommended`.
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FeeRates {
+    pub fastest_fee: f64,
+    pub half_hour_fee: f64,
+    pub hour_fee: f64,
+    pub economy_fee: f64,
+    pub minimum_fee: f64,
+}
+
+/// GET /v1/fees/recommended
+pub async fn fetch_fee_rates(
+    client: &reqwest::Client,
+    base_url: &str,
+) -> Result<FeeRates, AppError> {
+    let url = format!("{}/v1/fees/recommended", base_url);
+    let res = client
+        .get(&url)
+        .send()
+        .await
+        .map_err(|e| AppError::BlockstreamError(e.to_string()))?;
+
+    if !res.status().is_success() {
+        return Err(AppError::BlockstreamError(format!("HTTP {}: {}", res.status(), url)));
+    }
+
+    res.json::<FeeRates>()
+        .await
+        .map_err(|e| AppError::BlockstreamError(e.to_string()))
+}
+
+/// GET /blocks/tip/height
+pub async fn fetch_tip_height(
+    client: &reqwest::Client,
+    base_url: &str,
+) -> Result<u32, AppError> {
+    let url = format!("{}/blocks/tip/height", base_url);
+    let res = client
+        .get(&url)
+        .send()
+        .await
+        .map_err(|e| AppError::BlockstreamError(e.to_string()))?;
+
+    if !res.status().is_success() {
+        return Err(AppError::BlockstreamError(format!("HTTP {}: {}", res.status(), url)));
+    }
+
+    res.text()
+        .await
+        .map_err(|e| AppError::BlockstreamError(e.to_string()))?
+        .trim()
+        .parse()
+        .map_err(|_| AppError::BlockstreamError("Invalid tip height".to_string()))
+}
