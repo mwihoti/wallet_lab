@@ -20,6 +20,7 @@ use api::{
     status_handlers::get_tx_status,
     malleability_handlers::malleability_demo,
     lab_handler::get_lab_info,
+    network_handlers::{get_fee_rates, validate_address},
 };
 
 #[tokio::main]
@@ -42,6 +43,8 @@ async fn main() {
         .route("/tx/{txid}/status", get(get_tx_status))
         .route("/demo/malleability", post(malleability_demo))
         .route("/lab/info", get(get_lab_info))
+        .route("/fees", get(get_fee_rates))
+        .route("/address/{address}/validate", get(validate_address))
         .with_state(state);
 
     let app = Router::new()

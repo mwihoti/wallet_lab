@@ -21,15 +21,34 @@
 
   <link rel="canonical" href="https://wallet-lab.onrender.com" />
 
+  <script>
+    // Apply the saved theme before first paint to avoid a flash.
+    try { const t = localStorage.getItem('wallet_lab_theme'); if (t) document.documentElement.dataset.theme = t; } catch {}
+  </script>
   <link rel="stylesheet" href="/style.css" />
   <!-- Cloudflare Web Analytics --><script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "d019d932e45443a4a8d053186883cffc"}'></script><!-- End Cloudflare Web Analytics -->
 </head>
 <body>
+  <a class="skip-link" href="#step-1">Skip to the lab</a>
   <header>
+    <div class="header-tools">
+      <button id="btn-theme" class="btn-tool" type="button" aria-label="Switch to light theme">☀ Light</button>
+      <button id="btn-reset" class="btn-tool" type="button">↺ Reset lab</button>
+    </div>
     <h1>Bitcoin Wallet Lab</h1>
     <p class="subtitle">Build and broadcast a real Bitcoin testnet transaction — step by step</p>
     <span class="badge">Testnet4</span>
   </header>
+
+  <nav class="stepper" aria-label="Lab progress">
+    <ol>
+      <li data-step="1" class="current"><button type="button" aria-current="step"><span class="stepper-dot">1</span><span class="stepper-label">Wallet</span></button></li>
+      <li data-step="2" class="locked"><button type="button" disabled><span class="stepper-dot">2</span><span class="stepper-label">Receive</span></button></li>
+      <li data-step="3" class="locked"><button type="button" disabled><span class="stepper-dot">3</span><span class="stepper-label">Send</span></button></li>
+      <li data-step="4" class="locked"><button type="button" disabled><span class="stepper-dot">4</span><span class="stepper-label">Confirm</span></button></li>
+      <li data-step="5" class="locked"><button type="button" disabled><span class="stepper-dot">5</span><span class="stepper-label">Malleability</span></button></li>
+    </ol>
+  </nav>
 
   <div class="lab-layout">
 
@@ -41,7 +60,7 @@
         <div class="step-header">
           <span class="step-number">1</span>
           <h2>Create Wallet</h2>
-          <button class="btn-info" data-step="1" title="Learn about this step">?</button>
+          <button class="btn-info" data-step="1" type="button" title="Learn about this step" aria-label="Learn about step 1">?</button>
         </div>
         <p>Choose a wallet type, then generate your keys.</p>
 
@@ -64,6 +83,11 @@
           </button>
         </div>
 
+        <div class="testnet-banner" role="note">
+          <strong>Testnet only.</strong> Keys are generated on the lab server and kept in this browser.
+          Never send real bitcoin to these addresses and never reuse these keys on mainnet.
+        </div>
+
         <button id="btn-generate" class="btn-primary">Generate Wallet</button>
 
         <div id="wallet-result" class="result-box hidden">
@@ -79,10 +103,10 @@
             </div>
           </div>
 
-          <!-- QR code (native SegWit only) -->
+          <!-- QR code for the active address type -->
           <div id="qr-section" class="hidden">
             <div class="field">
-              <label>QR Code</label>
+              <label>QR Code <span class="label-hint">scan with a testnet wallet</span></label>
               <div id="qr-code" class="qr-container"></div>
             </div>
           </div>
@@ -113,8 +137,9 @@
             <label>WIF Private Key</label>
             <div class="copy-row">
               <code id="wallet-wif" class="blurred"></code>
-              <button class="btn-toggle" data-target="wallet-wif">Show</button>
+              <button class="btn-toggle" data-target="wallet-wif" aria-pressed="false">Show</button>
               <button class="btn-copy" data-target="wallet-wif">Copy</button>
+              <button class="btn-tiny" id="btn-export-key" type="button">Download</button>
             </div>
             <small class="warning">⚠ Never share your private key. This is testnet — no real money.</small>
           </div>
@@ -131,7 +156,7 @@
         <div class="step-header">
           <span class="step-number">2</span>
           <h2>Receive Testnet Coins</h2>
-          <button class="btn-info" data-step="2" title="Learn about this step">?</button>
+          <button class="btn-info" data-step="2" type="button" title="Learn about this step" aria-label="Learn about step 2">?</button>
         </div>
         <p>Use a testnet faucet to send free test coins to your <span id="step2-type-label">address</span>.</p>
         <p class="faucet-note">Copy your address and paste it into one of these faucets:</p>
@@ -149,7 +174,7 @@
           </div>
         </div>
         <div id="utxo-section">
-          <div class="polling-status" id="utxo-polling-status">
+          <div class="polling-status" id="utxo-polling-status" role="status" aria-live="polite">
             <span class="spinner"></span> Watching for incoming coins...
           </div>
           <div class="table-scroll">
@@ -180,36 +205,62 @@
         <div class="step-header">
           <span class="step-number">3</span>
           <h2>Send Payment</h2>
-          <button class="btn-info" data-step="3" title="Learn about this step">?</button>
+          <button class="btn-info" data-step="3" type="button" title="Learn about this step" aria-label="Learn about step 3">?</button>
         </div>
-        <p>Available balance: <strong id="balance-display">0 sat</strong></p>
+        <div class="field">
+          <label id="coin-label">Coins to spend <span class="label-hint">pick which UTXOs become inputs</span></label>
+          <div class="coin-toolbar">
+            <span>Selected: <strong id="balance-display">0 sat</strong> <span id="selected-count" class="muted"></span></span>
+            <button type="button" id="btn-select-all" class="btn-tiny">Select all</button>
+            <button type="button" id="btn-refresh-utxos" class="btn-tiny">↻ Refresh</button>
+          </div>
+          <div class="table-scroll">
+            <table class="coin-table" aria-labelledby="coin-label">
+              <thead><tr><th scope="col"><span class="sr-only">Spend</span></th><th scope="col">UTXO</th><th scope="col">Amount (sat)</th></tr></thead>
+              <tbody id="coin-tbody"></tbody>
+            </table>
+          </div>
+        </div>
         <div id="lab-wallet-notice" class="lab-notice hidden">
-          <span class="lab-notice-icon">🏦</span>
+          <span class="lab-notice-icon" aria-hidden="true">🏦</span>
           <div>
             <strong>Lab wallet pre-filled as recipient</strong>
             <p>Sending to the lab's shared address so you can see both sides of the transaction.</p>
           </div>
         </div>
-        <form id="send-form">
+        <form id="send-form" novalidate>
           <div class="field">
             <label for="recipient">Recipient Address</label>
-            <input type="text" id="recipient" placeholder="any testnet address (m.., 2.., tb1q..)" />
+            <input type="text" id="recipient" placeholder="any testnet address (m.., 2.., tb1q..)"
+                   autocomplete="off" spellcheck="false" aria-describedby="recipient-hint" />
+            <small id="recipient-hint" class="input-hint" aria-live="polite"></small>
           </div>
           <div class="field-row">
             <div class="field">
               <label for="amount">Amount (satoshis)</label>
-              <input type="number" id="amount" placeholder="e.g. 10000" min="1000" />
+              <div class="input-with-btn">
+                <input type="number" id="amount" placeholder="e.g. 10000" min="1" step="1" inputmode="numeric" />
+                <button type="button" id="btn-max" class="btn-tiny">Max</button>
+              </div>
             </div>
             <div class="field">
               <label for="fee-rate">Fee Rate (sat/vByte)</label>
-              <input type="number" id="fee-rate" value="1" min="1" />
+              <input type="number" id="fee-rate" value="1" min="1" step="any" inputmode="decimal" />
             </div>
           </div>
-          <div class="fee-estimate-row">
-            <span>Est. tx size: <strong id="est-vbytes">—</strong> vBytes</span>
-            <span>Fee: <strong id="est-fee">—</strong> sats</span>
-            <input type="hidden" id="fee" />
+          <div class="fee-presets" id="fee-presets" role="group" aria-label="Fee rate presets">
+            <span class="fee-presets-label">Live mempool rates:</span>
+            <span id="fee-presets-status" class="muted">loading…</span>
           </div>
+
+          <div class="tx-breakdown" id="tx-breakdown" aria-live="polite">
+            <div class="bd-row"><span>Inputs (<span id="bd-input-count">0</span>)</span><strong id="bd-inputs">—</strong></div>
+            <div class="bd-row bd-out"><span>→ Recipient</span><span id="bd-amount">—</span></div>
+            <div class="bd-row bd-out"><span>→ Fee <small class="muted">(<span id="est-vbytes">—</span> vB × <span id="bd-rate">—</span> sat/vB)</small></span><span id="est-fee">—</span></div>
+            <div class="bd-row bd-out"><span>→ Change back to you</span><span id="bd-change">—</span></div>
+            <p id="bd-note" class="bd-note hidden"></p>
+          </div>
+          <input type="hidden" id="fee" />
           <button type="submit" id="btn-send" class="btn-primary">Build &amp; Broadcast Transaction</button>
         </form>
         <div id="tx-result" class="result-box hidden">
@@ -220,6 +271,11 @@
               <button class="btn-copy" data-target="sent-txid">Copy</button>
             </div>
           </div>
+          <div class="field hidden" id="sent-wtxid-field">
+            <label>Witness TXID (wtxid) <span class="label-hint">includes the signatures</span></label>
+            <code id="sent-wtxid"></code>
+          </div>
+          <div class="tx-stats" id="sent-stats"></div>
           <details>
             <summary>Raw Transaction Hex</summary>
             <code id="sent-raw-hex" class="raw-hex"></code>
@@ -233,18 +289,24 @@
         <div class="step-header">
           <span class="step-number">4</span>
           <h2>Track Confirmation</h2>
-          <button class="btn-info" data-step="4" title="Learn about this step">?</button>
+          <button class="btn-info" data-step="4" type="button" title="Learn about this step" aria-label="Learn about step 4">?</button>
         </div>
         <div class="field">
           <label>Transaction ID</label>
           <code id="track-txid"></code>
           <a id="explorer-link" href="#" target="_blank" class="btn-tiny">View on Explorer &rarr;</a>
         </div>
-        <div class="confirmation-tracker">
+        <div class="confirmation-tracker" role="status" aria-live="polite">
           <div id="confirmation-status" class="conf-badge unconfirmed">Unconfirmed</div>
           <div id="confirmation-count" class="conf-count">Waiting for block...</div>
-          <div class="spinner" id="conf-spinner"></div>
+          <div class="spinner" id="conf-spinner" aria-hidden="true"></div>
         </div>
+        <ol class="timeline" id="conf-timeline">
+          <li data-stage="broadcast"><span class="tl-dot"></span><div><strong>Broadcast</strong><small>Sent to a node, relayed peer to peer</small></div></li>
+          <li data-stage="mempool"><span class="tl-dot"></span><div><strong>In mempool</strong><small>Valid and waiting for a miner</small></div></li>
+          <li data-stage="conf1"><span class="tl-dot"></span><div><strong>1 confirmation</strong><small id="tl-conf1-detail">Included in a block</small></div></li>
+          <li data-stage="conf6"><span class="tl-dot"></span><div><strong>6 confirmations</strong><small id="tl-conf6-detail">Traditional "final" threshold (~1 hour)</small></div></li>
+        </ol>
         <div class="conf-explainer">
           <p>Bitcoin blocks are mined roughly every <strong>10 minutes</strong>. Your transaction sits in the
           <em>mempool</em> (a waiting room) until a miner picks it up and includes it in the next block.</p>
@@ -258,12 +320,12 @@
         <div class="step-header">
           <span class="step-number">5</span>
           <h2>Signature Malleability Demo</h2>
-          <button class="btn-info" data-step="5" title="Learn about this step">?</button>
+          <button class="btn-info" data-step="5" type="button" title="Learn about this step" aria-label="Learn about step 5">?</button>
         </div>
         <p class="explainer">
           ECDSA signatures contain an <code>(r, s)</code> pair. Flipping <code>s → N - s</code>
-          produces a different valid signature — and a completely different TXID —
-          even though the transaction is identical. This is why SegWit was invented.
+          produces a different valid signature. For a <strong>legacy</strong> transaction that changes the TXID;
+          for a <strong>SegWit</strong> transaction only the witness TXID changes. Run it on the transaction you just sent.
         </p>
         <button id="btn-run-demo" class="btn-primary">Run Demo</button>
         <div id="demo-result" class="result-box hidden">
@@ -271,21 +333,24 @@
             <div class="original">
               <h3>Original</h3>
               <label>TXID</label><code id="orig-txid"></code>
+              <label class="wtxid-row">WTXID</label><code id="orig-wtxid" class="wtxid-row"></code>
               <label>s value</label><code id="orig-s"></code>
               <label>DER Signature</label><code id="orig-der"></code>
             </div>
             <div class="arrow">&rarr;</div>
             <div class="malleated">
               <h3>Malleated</h3>
-              <label>TXID</label><code id="mall-txid" class="highlight-diff"></code>
+              <label>TXID</label><code id="mall-txid"></code>
+              <label class="wtxid-row">WTXID</label><code id="mall-wtxid" class="wtxid-row highlight-diff"></code>
               <label>s' = N - s</label><code id="mall-s" class="highlight-diff"></code>
               <label>DER Signature</label><code id="mall-der" class="highlight-diff"></code>
             </div>
           </div>
           <div class="verdict">
             <span class="valid-badge">Both signatures are valid ✓</span>
-            <p>Same coins moved. Same inputs and outputs. Two different TXIDs.</p>
-            <p>SegWit fixed this by moving signatures outside the data that's hashed for the TXID.</p>
+            <p id="verdict-headline"></p>
+            <p id="verdict-explanation"></p>
+            <p class="muted">Note: today's nodes only relay the low-S version (BIP-62/146 policy), but the high-S one is still valid by consensus.</p>
           </div>
         </div>
       </section>
@@ -296,18 +361,18 @@
     <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
 
     <!-- ── RIGHT: Info Sidebar ── -->
-    <aside class="info-sidebar" id="info-sidebar">
+    <aside class="info-sidebar" id="info-sidebar" aria-labelledby="sidebar-title">
       <div class="sidebar-header">
         <span class="sidebar-icon">💡</span>
         <h3 id="sidebar-title">Learn</h3>
-        <button class="btn-sidebar-close" id="btn-sidebar-close">&times;</button>
+        <button class="btn-sidebar-close" id="btn-sidebar-close" type="button" aria-label="Close panel">&times;</button>
       </div>
       <div class="sidebar-content" id="sidebar-content"></div>
     </aside>
 
   </div>
 
-  <div id="toast" class="toast hidden"></div>
+  <div id="toast" class="toast hidden" role="status" aria-live="assertive"></div>
 
   <footer class="site-footer">
     <span>Built by <a href="https://x.com/mwihotii" target="_blank" rel="noopener">@mwihotii</a></span>
@@ -401,10 +466,11 @@
   <template id="info-step-3">
     <div class="info-section">
       <h4>📤 How a Bitcoin Transaction Works</h4>
-      <p>A transaction has <strong>inputs</strong> (UTXOs you're spending) and <strong>outputs</strong> (who gets the coins). You must spend the entire input — any leftover goes back as <em>change</em>.</p>
+      <p>A transaction has <strong>inputs</strong> (UTXOs you're spending) and <strong>outputs</strong> (who gets the coins). Each input is spent in full — any leftover goes back as <em>change</em>.</p>
       <div class="info-flow">
-        Input (50,000 sat) → Recipient (10,000) + Change (38,000) + Fee (2,000)
+        Inputs (30,000 + 20,000 sat) → Recipient (10,000) + Change (38,000) + Fee (2,000)
       </div>
+      <p>Tick several coins to combine them. Every extra input adds its own signature, so it makes the transaction bigger and the fee higher.</p>
     </div>
     <div class="info-section">
       <h4>✍ Signatures by Wallet Type</h4>
@@ -423,7 +489,15 @@
     </div>
     <div class="info-section">
       <h4>💸 Transaction Fees</h4>
-      <p>Fee = sum(inputs) - sum(outputs). On testnet, any fee works since there's no competition for block space.</p>
+      <p>Fee = sum(inputs) − sum(outputs). Miners rank transactions by <strong>fee rate</strong> (sat per virtual byte), so the fee is the rate × the transaction's size.</p>
+      <div class="info-term">
+        <span class="term-label">vBytes</span>
+        <span class="term-def">Witness bytes count ¼, so SegWit inputs weigh less than legacy ones: 148 vB (P2PKH) vs 91 vB (nested) vs 68 vB (native).</span>
+      </div>
+      <div class="info-term">
+        <span class="term-label">Dust</span>
+        <span class="term-def">An output worth less than it would cost to spend (546 sat for P2PKH, 294 for P2WPKH) is non-standard and nodes won't relay it. Tiny change is added to the fee instead.</span>
+      </div>
     </div>
     <div class="info-section">
       <h4>🏦 Lab Wallet</h4>
@@ -467,11 +541,11 @@
       <h4>🔄 Why s → N - s Is Valid</h4>
       <p>The secp256k1 curve has order <strong>N</strong>. Due to the curve's symmetry, verification works for both <code>s</code> and <code>N - s</code>.</p>
       <div class="info-flow">N = FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141</div>
-      <p>Both are perfectly valid signatures that the network accepts.</p>
+      <p>Both are valid by consensus. Since BIP-62/146, nodes only <em>relay</em> the low-S form — a policy rule, not a consensus rule.</p>
     </div>
     <div class="info-section">
       <h4>💥 The Mt. Gox Problem (2014)</h4>
-      <p>Pre-SegWit TXID = hash(entire tx including signature). Flip s → different signature → different TXID for the exact same payment. Attackers could intercept, tweak, rebroadcast — then claim the original TXID "never confirmed." This caused billions in losses at Mt. Gox.</p>
+      <p>Pre-SegWit TXID = hash(entire tx including signature). Flip s → different signature → different TXID for the exact same payment. Attackers could intercept, tweak, rebroadcast — then claim the original TXID "never confirmed." Mt. Gox blamed malleability for missing coins — later research showed it explained only a small part, but it made the flaw famous.</p>
     </div>
     <div class="info-section">
       <h4>🛡 SegWit Fix</h4>

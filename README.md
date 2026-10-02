@@ -12,11 +12,13 @@ The cryptography (secp256k1 elliptic curve, ECDSA, RFC 6979) is implemented from
   - **P2PKH** (Legacy) — `m…` / `n…`
   - **P2SH-P2WPKH** (Nested SegWit) — `2…`
   - **P2WPKH** (Native SegWit) — `tb1q…`
-- Receive free testnet coins from a faucet
-- Build and sign a Bitcoin transaction (legacy or SegWit)
-- Set the fee using a **sat/vByte rate** — the tx size in vBytes is estimated automatically per address type
-- Broadcast the transaction and track confirmation in real time
-- Explore a signature malleability demo (flipping `s → n − s`)
+- Receive free testnet coins from a faucet, with a QR code for every address type
+- Pick which UTXOs to spend (coin control) and build a multi-input transaction (legacy or SegWit)
+- Set the fee with **live mempool fee rates** or a custom sat/vByte rate. The tx size is estimated from the real number of inputs and output types, and a live breakdown shows inputs = amount + fee + change
+- Change below the dust limit is never created — it is added to the fee, and the UI explains why
+- Broadcast the transaction and follow it on a timeline: broadcast → mempool → 1 → 6 confirmations
+- Explore a signature malleability demo (flipping `s → n − s`) — legacy TXIDs change, SegWit TXIDs don't (only the WTXID does)
+- Light and dark themes, keyboard- and screen-reader-friendly UI
 
 ---
 
@@ -84,8 +86,10 @@ wallet_lab/
 |--------|------|-------------|
 | `POST` | `/api/wallet/create` | Generate a new testnet wallet |
 | `GET` | `/api/utxo/:address` | List UTXOs for an address |
-| `POST` | `/api/tx/build-and-send` | Build, sign, and broadcast a transaction |
-| `GET` | `/api/tx/:txid/status` | Check confirmation status |
+| `POST` | `/api/tx/build-and-send` | Build, sign, and broadcast a transaction (one or more `inputs`) |
+| `GET` | `/api/tx/:txid/status` | Confirmation status, tip height and confirmation count |
+| `GET` | `/api/fees` | Recommended fee rates (sat/vB) from the mempool |
+| `GET` | `/api/address/:address/validate` | Decode an address: type, network, dust limit |
 | `POST` | `/api/demo/malleability` | Signature malleability demo |
 | `GET` | `/api/lab/info` | Return the lab wallet address |
 
@@ -112,6 +116,14 @@ Open `http://localhost:8080`.
 | `LAB_WALLET_ADDRESS` | *(from `lab_wallet/wallet.json`)* | Shared lab wallet address |
 | `RUST_LOG` | `wallet_lab=debug,info` | Log filter |
 
+### Tests
+
+```bash
+cargo test
+```
+
+Covers address decoding, coin selection and dust handling, the BIP-143 sighash test vector, multi-input legacy and SegWit signing (every signature is verified), and the malleability demo for both transaction formats.
+
 ---
 
 ## Running with Docker
@@ -127,19 +139,25 @@ docker run -p 8080:8080 \
 
 ## How Fees Are Calculated
 
-Fee inputs use a **sat/vByte rate**. The estimated transaction size in vBytes depends on the wallet type:
-
-| Wallet Type | Estimated vBytes |
-|-------------|-----------------|
-| P2PKH (Legacy) | 226 |
-| P2SH-P2WPKH (Nested SegWit) | 198 |
-| P2WPKH (Native SegWit) | 141 |
+Fee inputs use a **sat/vByte rate** (presets come from mempool.space's recommended rates). The transaction size is estimated from its weight:
 
 ```
-fee (sats) = fee_rate (sat/vByte) × estimated_vbytes
+weight   = overhead + Σ input weight + Σ output size × 4
+vbytes   = ceil(weight / 4)
+fee      = ceil(fee_rate × vbytes)
 ```
 
-SegWit inputs are cheaper because witness data is discounted — only 1 weight unit per byte versus 4 for non-witness data.
+| Spending from | Weight per input | ≈ vBytes |
+|---------------|------------------|----------|
+| P2PKH (Legacy) | 592 WU | 148 |
+| P2SH-P2WPKH (Nested SegWit) | 364 WU | 91 |
+| P2WPKH (Native SegWit) | 272 WU | 68 |
+
+Outputs are 34 (P2PKH), 32 (P2SH) or 31 (P2WPKH) bytes. A 1-input, 2-output native SegWit payment is about 141 vB versus 226 vB for legacy. SegWit inputs are cheaper because witness data is discounted — only 1 weight unit per byte versus 4 for non-witness data.
+
+### Dust
+
+An output worth less than it costs to spend is **dust** and nodes refuse to relay it (546 sat for P2PKH, 540 for P2SH, 294 for P2WPKH). If the change would be below that, no change output is created and the leftover goes to the miner.
 
 ---
 

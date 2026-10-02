@@ -4,3 +4,4 @@ pub mod tx_handlers;
 pub mod status_handlers;
 pub mod malleability_handlers;
 pub mod lab_handler;
+pub mod network_handlers;
