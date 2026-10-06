@@ -5,3 +5,5 @@ pub mod wallet;
 pub mod script;
 pub mod api;
 pub mod blockstream;
+pub mod security;
+pub mod app;

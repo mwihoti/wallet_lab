@@ -3,6 +3,7 @@ use std::sync::Arc;
 use crate::{
     blockstream::client::{fetch_tip_height, fetch_tx_status},
     error::AppError,
+    security::validate_txid_param,
     state::AppState,
 };
 
@@ -11,10 +12,11 @@ pub async fn get_tx_status(
     State(state): State<Arc<AppState>>,
     Path(txid): Path<String>,
 ) -> Result<Json<serde_json::Value>, AppError> {
+    validate_txid_param(&txid)?;
     let base = &state.config.blockstream_base_url;
     let (info, tip) = tokio::join!(
         fetch_tx_status(&state.http, base, &txid),
-        fetch_tip_height(&state.http, base),
+        state.tip_cache.get_or_fetch(|| fetch_tip_height(&state.http, base)),
     );
     let info = info?;
     // The tip is a nice-to-have: report the status even if it fails.

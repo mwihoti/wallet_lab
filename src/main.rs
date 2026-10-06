@@ -1,27 +1,7 @@
-mod config;
-mod error;
-mod state;
-mod wallet;
-mod script;
-mod api;
-mod blockstream;
-
-use std::sync::Arc;
-use axum::{Router, routing::{get, post}};
-use tower_http::{cors::CorsLayer, services::ServeDir, trace::TraceLayer};
+use std::{net::SocketAddr, sync::Arc};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
-use config::AppConfig;
-use state::AppState;
-use api::{
-    wallet_handlers::create_wallet,
-    utxo_handlers::get_utxos,
-    tx_handlers::build_and_send,
-    status_handlers::get_tx_status,
-    malleability_handlers::malleability_demo,
-    lab_handler::get_lab_info,
-    network_handlers::{get_fee_rates, validate_address},
-};
+use wallet_lab::{app::build_router, config::AppConfig, security::spawn_pruner, state::AppState};
 
 #[tokio::main]
 async fn main() {
@@ -34,29 +14,41 @@ async fn main() {
 
     let config = AppConfig::from_env();
     let port   = config.port;
+    tracing::info!(
+        trust_proxy = config.trust_proxy,
+        allowed_origins = ?config.allowed_origins,
+        rate_limit_rps = config.rate_limit_rps,
+        tx_rate_limit_per_min = config.tx_rate_limit_per_min,
+        "config loaded"
+    );
     let state  = Arc::new(AppState::new(config));
+    spawn_pruner(state.clone());
 
-    let api_router = Router::new()
-        .route("/wallet/create", post(create_wallet))
-        .route("/utxo/{address}", get(get_utxos))
-        .route("/tx/build-and-send", post(build_and_send))
-        .route("/tx/{txid}/status", get(get_tx_status))
-        .route("/demo/malleability", post(malleability_demo))
-        .route("/lab/info", get(get_lab_info))
-        .route("/fees", get(get_fee_rates))
-        .route("/address/{address}/validate", get(validate_address))
-        .with_state(state);
-
-    let app = Router::new()
-        .nest("/api", api_router)
-        .fallback_service(ServeDir::new("src/static"))
-        .layer(CorsLayer::permissive())
-        .layer(TraceLayer::new_for_http());
+    let app = build_router(state, "src/static");
 
     let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", port))
         .await
         .unwrap();
 
     tracing::info!("Wallet Lab running on http://0.0.0.0:{}", port);
-    axum::serve(listener, app).await.unwrap();
+    // Connect info gives the rate limiter the peer address.
+    axum::serve(listener, app.into_make_service_with_connect_info::<SocketAddr>())
+        .with_graceful_shutdown(shutdown_signal())
+        .await
+        .unwrap();
+}
+
+/// Finish in-flight requests on Ctrl-C or SIGTERM (what hosts send on redeploy).
+async fn shutdown_signal() {
+    let ctrl_c = async { tokio::signal::ctrl_c().await.ok(); };
+    #[cfg(unix)]
+    let term = async {
+        if let Ok(mut s) = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate()) {
+            s.recv().await;
+        }
+    };
+    #[cfg(not(unix))]
+    let term = std::future::pending::<()>();
+    tokio::select! { _ = ctrl_c => {}, _ = term => {} }
+    tracing::info!("shutting down");
 }

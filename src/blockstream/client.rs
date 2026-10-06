@@ -113,7 +113,7 @@ pub async fn fetch_tx_status(
 }
 
 /// Recommended fee rates in sat/vB, from mempool.space's `/v1/fees/recommended`.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FeeRates {
     pub fastest_fee: f64,

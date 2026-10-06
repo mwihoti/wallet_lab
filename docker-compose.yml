@@ -1,0 +1,36 @@
+# Public deployment on your own server: the app behind Caddy, which gets and
+# renews a Let's Encrypt certificate for DOMAIN automatically.
+#
+#   DOMAIN=lab.example.com LAB_WALLET_ADDRESS=tb1q... docker compose up -d
+#
+# Point the domain's DNS A/AAAA record at the server and open ports 80 and 443 first.
+services:
+  wallet_lab:
+    build: .
+    restart: unless-stopped
+    environment:
+      # Caddy sits in front, so read the real client IP from X-Forwarded-For
+      TRUST_PROXY: "1"
+      LAB_WALLET_ADDRESS: ${LAB_WALLET_ADDRESS:-}
+      RUST_LOG: ${RUST_LOG:-wallet_lab=info,info}
+    expose:
+      - "8080"
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    depends_on:
+      - wallet_lab
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN:?Set DOMAIN to your public hostname}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  caddy_data:
+  caddy_config:

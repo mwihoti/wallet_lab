@@ -12,7 +12,11 @@ use crate::{
 pub async fn get_fee_rates(
     State(state): State<Arc<AppState>>,
 ) -> Result<Json<FeeRates>, AppError> {
-    Ok(Json(fetch_fee_rates(&state.http, &state.config.blockstream_base_url).await?))
+    let rates = state
+        .fee_cache
+        .get_or_fetch(|| fetch_fee_rates(&state.http, &state.config.blockstream_base_url))
+        .await?;
+    Ok(Json(rates))
 }
 
 /// GET /api/address/{address}/validate — decode an address without touching the network.

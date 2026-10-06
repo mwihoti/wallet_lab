@@ -80,8 +80,16 @@ async function apiFetch(path, options = {}) {
     headers: { 'Content-Type': 'application/json' },
     ...options,
   });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+  // Not every error is JSON (e.g. a proxy's 502 page or a 413 from the body limit)
+  const text = await res.text();
+  let data = null;
+  try { data = JSON.parse(text); } catch { /* not JSON */ }
+  if (!res.ok) {
+    if (res.status === 429 && !data?.error) {
+      throw new Error(`Too many requests — please wait ${res.headers.get('Retry-After') || 'a few'}s and try again.`);
+    }
+    throw new Error(data?.error || `Server error (HTTP ${res.status})`);
+  }
   return data;
 }
 
@@ -438,7 +446,7 @@ $('btn-to-step2').addEventListener('click', () => {
 function startUtxoPolling() {
   clearInterval(state.utxoPollInterval);
   pollUtxos();
-  state.utxoPollInterval = setInterval(pollUtxos, 5000);
+  state.utxoPollInterval = setInterval(pollUtxos, 10000);
 }
 
 async function pollUtxos() {
@@ -453,7 +461,7 @@ async function pollUtxos() {
       state.utxoPollInterval = null;
       const status = $('utxo-polling-status');
       status.style.display = '';
-      status.innerHTML = '<span style="color:var(--green)">✓ Coins received!</span>';
+      status.innerHTML = '<span class="ok-text">✓ Coins received!</span>';
       $('btn-to-step3').classList.remove('hidden');
     }
   } catch { /* silently retry */ }

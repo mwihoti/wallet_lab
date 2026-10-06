@@ -15,7 +15,7 @@ bitcoin_dojo = { path = "vendor" }
 axum = { version = "0.8", features = ["macros"] }
 tokio = { version = "1", features = ["full"] }
 tower = "0.5"
-tower-http = { version = "0.6", features = ["fs", "cors", "trace"] }
+tower-http = { version = "0.6", features = ["fs", "cors", "trace", "set-header"] }
 
 # HTTP client for Blockstream API
 reqwest = { version = "0.12", features = ["json", "rustls-tls"], default-features = false }
@@ -38,3 +38,6 @@ hex = "0.4"
 # Big integer arithmetic (needed for N-s malleability flip, same version as bitcoin_dojo)
 num-bigint = "0.4"
 
+
+[dev-dependencies]
+tower = { version = "0.5", features = ["util"] }

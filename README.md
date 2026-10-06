@@ -39,7 +39,9 @@ The cryptography (secp256k1 elliptic curve, ECDSA, RFC 6979) is implemented from
 ```
 wallet_lab/
 ├── src/
-│   ├── main.rs                  # Axum server setup, routing
+│   ├── main.rs                  # Server startup, graceful shutdown
+│   ├── app.rs                   # Router, security headers, CORS, body limit
+│   ├── security.rs              # Rate limiting, client IP, param validation
 │   ├── config.rs                # Env-var configuration
 │   ├── error.rs                 # AppError → HTTP status mapping
 │   ├── state.rs                 # Shared state (config + HTTP client)
@@ -92,6 +94,7 @@ wallet_lab/
 | `GET` | `/api/address/:address/validate` | Decode an address: type, network, dust limit |
 | `POST` | `/api/demo/malleability` | Signature malleability demo |
 | `GET` | `/api/lab/info` | Return the lab wallet address |
+| `GET` | `/healthz` | Health check for the host (not rate limited) |
 
 ---
 
@@ -115,6 +118,10 @@ Open `http://localhost:8080`.
 | `BLOCKSTREAM_URL` | `https://mempool.space/testnet4/api` | Blockchain API base URL |
 | `LAB_WALLET_ADDRESS` | *(from `lab_wallet/wallet.json`)* | Shared lab wallet address |
 | `RUST_LOG` | `wallet_lab=debug,info` | Log filter |
+| `TRUST_PROXY` | auto (`true` on Render/Fly) | Read the client IP from `X-Forwarded-For`. Turn on behind any reverse proxy, or every visitor shares one rate-limit bucket |
+| `ALLOWED_ORIGINS` | *(empty — same-origin only)* | Comma-separated origins allowed to call the API from another site |
+| `RATE_LIMIT_RPS` / `RATE_LIMIT_BURST` | `5` / `120` | General API limit per client IP |
+| `RATE_LIMIT_TX_PER_MIN` / `RATE_LIMIT_TX_BURST` | `12` / `30` | Wallet creation + broadcast limit per client IP |
 
 ### Tests
 
@@ -122,7 +129,7 @@ Open `http://localhost:8080`.
 cargo test
 ```
 
-Covers address decoding, coin selection and dust handling, the BIP-143 sighash test vector, multi-input legacy and SegWit signing (every signature is verified), and the malleability demo for both transaction formats.
+Covers address decoding, coin selection and dust handling, the BIP-143 sighash test vector, multi-input legacy and SegWit signing (every signature is verified), the malleability demo for both transaction formats, and the public-hosting protections (rate limits, headers, CORS, body limit, path validation) through the real router.
 
 ---
 
@@ -134,6 +141,36 @@ docker run -p 8080:8080 \
   -e LAB_WALLET_ADDRESS="<testnet_address>" \
   wallet_lab
 ```
+
+---
+
+## Deploying Publicly
+
+The app is built to be opened by anyone on the internet:
+
+- **Rate limiting per client IP**: a general API limit, plus a stricter one for wallet creation and broadcasting. Clients over the limit get `429` with a `Retry-After` header. IPv6 clients are limited per /64.
+- **Upstream caching**: fee rates (30 s) and block height (15 s) are cached, so many visitors don't multiply calls to mempool.space.
+- **Security headers**: Content-Security-Policy, HSTS, `X-Frame-Options`, `nosniff`, and `Cache-Control: no-store` on API responses (they can contain a private key).
+- **Same-origin API** by default (see `ALLOWED_ORIGINS`), a 64 KB request body limit, and validation of path parameters forwarded upstream.
+- **`/healthz`** for the host's health check, and graceful shutdown on `SIGTERM`.
+
+Always serve it over **HTTPS** — the browser sends the testnet private key to the server when signing.
+
+### Render / Fly.io
+
+Deploy from the `Dockerfile` and set the health check path to `/healthz`. Both platforms put the app behind their own proxy, which the app detects (`RENDER` / `FLY_APP_NAME`) and trusts for the client IP. HTTPS is automatic.
+
+### Your own server (Docker Compose + Caddy)
+
+Point your domain's DNS at the server, open ports 80 and 443, then:
+
+```bash
+DOMAIN=lab.example.com LAB_WALLET_ADDRESS="<testnet_address>" docker compose up -d --build
+```
+
+Caddy obtains and renews the HTTPS certificate automatically; `TRUST_PROXY` is already set in `docker-compose.yml`.
+
+> The rate limiter keeps its state in memory, so it is per instance. Run one instance, or put a shared limiter (e.g. at your proxy or CDN) in front if you scale out.
 
 ---
 
