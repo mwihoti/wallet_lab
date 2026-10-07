@@ -160,15 +160,46 @@ Always serve it over **HTTPS** — the browser sends the testnet private key to 
 
 Deploy from the `Dockerfile` and set the health check path to `/healthz`. Both platforms put the app behind their own proxy, which the app detects (`RENDER` / `FLY_APP_NAME`) and trusts for the client IP. HTTPS is automatic.
 
-### Your own server (Docker Compose + Caddy)
+### Your own server (VPS)
 
-Point your domain's DNS at the server, open ports 80 and 443, then:
+Needs Docker with the Compose plugin and a domain whose DNS `A` record points at the server.
 
 ```bash
-DOMAIN=lab.example.com LAB_WALLET_ADDRESS="<testnet_address>" docker compose up -d --build
+git clone https://github.com/mwihoti/wallet_lab.git && cd wallet_lab
+cp .env.example .env        # set DOMAIN (and LAB_WALLET_ADDRESS if you have one)
 ```
 
-Caddy obtains and renews the HTTPS certificate automatically; `TRUST_PROXY` is already set in `docker-compose.yml`.
+**A. Nothing else uses ports 80/443** — use the bundled Caddy, which gets the HTTPS certificate automatically:
+
+```bash
+sudo ufw allow 80,443/tcp   # if you use ufw
+docker compose --profile caddy up -d --build
+```
+
+**B. You already run a reverse proxy** (Nginx, Traefik, the one in front of n8n…) — start only the app and add a site to your proxy:
+
+```bash
+docker compose up -d --build   # app listens on 127.0.0.1:8080 only
+```
+
+```nginx
+server {
+    server_name lab.example.com;
+    location / {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+    # then: sudo certbot --nginx -d lab.example.com
+}
+```
+
+The app trusts `X-Forwarded-For` (`TRUST_PROXY=1` in the compose file) and is bound to loopback, so only your proxy can reach it.
+
+**Updating:** `git pull && docker compose up -d --build` (add `--profile caddy` for setup A).
+
+**Small servers:** the Rust release build needs roughly 2 GB of memory. On a 1 GB VPS add swap first (`sudo fallocate -l 2G /swapfile && sudo chmod 600 /swapfile && sudo mkswap /swapfile && sudo swapon /swapfile`).
 
 > The rate limiter keeps its state in memory, so it is per instance. Run one instance, or put a shared limiter (e.g. at your proxy or CDN) in front if you scale out.
 

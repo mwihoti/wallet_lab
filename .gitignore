@@ -1,3 +1,4 @@
 /target
 Secrets.toml
 lab_wallet/wallet.json
+.env
