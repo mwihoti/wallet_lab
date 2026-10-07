@@ -39,7 +39,9 @@ The cryptography (secp256k1 elliptic curve, ECDSA, RFC 6979) is implemented from
 ```
 wallet_lab/
 ├── src/
-│   ├── main.rs                  # Axum server setup, routing
+│   ├── main.rs                  # Server startup, graceful shutdown
+│   ├── app.rs                   # Router, security headers, CORS, body limit
+│   ├── security.rs              # Rate limiting, client IP, param validation
 │   ├── config.rs                # Env-var configuration
 │   ├── error.rs                 # AppError → HTTP status mapping
 │   ├── state.rs                 # Shared state (config + HTTP client)
@@ -92,6 +94,7 @@ wallet_lab/
 | `GET` | `/api/address/:address/validate` | Decode an address: type, network, dust limit |
 | `POST` | `/api/demo/malleability` | Signature malleability demo |
 | `GET` | `/api/lab/info` | Return the lab wallet address |
+| `GET` | `/healthz` | Health check for the host (not rate limited) |
 
 ---
 
@@ -115,6 +118,10 @@ Open `http://localhost:8080`.
 | `BLOCKSTREAM_URL` | `https://mempool.space/testnet4/api` | Blockchain API base URL |
 | `LAB_WALLET_ADDRESS` | *(from `lab_wallet/wallet.json`)* | Shared lab wallet address |
 | `RUST_LOG` | `wallet_lab=debug,info` | Log filter |
+| `TRUST_PROXY` | auto (`true` on Render/Fly) | Read the client IP from `X-Forwarded-For`. Turn on behind any reverse proxy, or every visitor shares one rate-limit bucket |
+| `ALLOWED_ORIGINS` | *(empty — same-origin only)* | Comma-separated origins allowed to call the API from another site |
+| `RATE_LIMIT_RPS` / `RATE_LIMIT_BURST` | `5` / `120` | General API limit per client IP |
+| `RATE_LIMIT_TX_PER_MIN` / `RATE_LIMIT_TX_BURST` | `12` / `30` | Wallet creation + broadcast limit per client IP |
 
 ### Tests
 
@@ -122,7 +129,7 @@ Open `http://localhost:8080`.
 cargo test
 ```
 
-Covers address decoding, coin selection and dust handling, the BIP-143 sighash test vector, multi-input legacy and SegWit signing (every signature is verified), and the malleability demo for both transaction formats.
+Covers address decoding, coin selection and dust handling, the BIP-143 sighash test vector, multi-input legacy and SegWit signing (every signature is verified), the malleability demo for both transaction formats, and the public-hosting protections (rate limits, headers, CORS, body limit, path validation) through the real router.
 
 ---
 
@@ -134,6 +141,67 @@ docker run -p 8080:8080 \
   -e LAB_WALLET_ADDRESS="<testnet_address>" \
   wallet_lab
 ```
+
+---
+
+## Deploying Publicly
+
+The app is built to be opened by anyone on the internet:
+
+- **Rate limiting per client IP**: a general API limit, plus a stricter one for wallet creation and broadcasting. Clients over the limit get `429` with a `Retry-After` header. IPv6 clients are limited per /64.
+- **Upstream caching**: fee rates (30 s) and block height (15 s) are cached, so many visitors don't multiply calls to mempool.space.
+- **Security headers**: Content-Security-Policy, HSTS, `X-Frame-Options`, `nosniff`, and `Cache-Control: no-store` on API responses (they can contain a private key).
+- **Same-origin API** by default (see `ALLOWED_ORIGINS`), a 64 KB request body limit, and validation of path parameters forwarded upstream.
+- **`/healthz`** for the host's health check, and graceful shutdown on `SIGTERM`.
+
+Always serve it over **HTTPS** — the browser sends the testnet private key to the server when signing.
+
+### Render / Fly.io
+
+Deploy from the `Dockerfile` and set the health check path to `/healthz`. Both platforms put the app behind their own proxy, which the app detects (`RENDER` / `FLY_APP_NAME`) and trusts for the client IP. HTTPS is automatic.
+
+### Your own server (VPS)
+
+Needs Docker with the Compose plugin and a domain whose DNS `A` record points at the server.
+
+```bash
+git clone https://github.com/mwihoti/wallet_lab.git && cd wallet_lab
+cp .env.example .env        # set DOMAIN (and LAB_WALLET_ADDRESS if you have one)
+```
+
+**A. Nothing else uses ports 80/443** — use the bundled Caddy, which gets the HTTPS certificate automatically:
+
+```bash
+sudo ufw allow 80,443/tcp   # if you use ufw
+docker compose --profile caddy up -d --build
+```
+
+**B. You already run a reverse proxy** (Nginx, Traefik, the one in front of n8n…) — start only the app and add a site to your proxy:
+
+```bash
+docker compose up -d --build   # app listens on 127.0.0.1:8080 only
+```
+
+```nginx
+server {
+    server_name lab.example.com;
+    location / {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+    # then: sudo certbot --nginx -d lab.example.com
+}
+```
+
+The app trusts `X-Forwarded-For` (`TRUST_PROXY=1` in the compose file) and is bound to loopback, so only your proxy can reach it.
+
+**Updating:** `git pull && docker compose up -d --build` (add `--profile caddy` for setup A).
+
+**Small servers:** the Rust release build needs roughly 2 GB of memory. On a 1 GB VPS add swap first (`sudo fallocate -l 2G /swapfile && sudo chmod 600 /swapfile && sudo mkswap /swapfile && sudo swapon /swapfile`).
+
+> The rate limiter keeps its state in memory, so it is per instance. Run one instance, or put a shared limiter (e.g. at your proxy or CDN) in front if you scale out.
 
 ---
 

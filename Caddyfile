@@ -1,0 +1,5 @@
+{$DOMAIN:localhost} {
+	encode zstd gzip
+	# Caddy replaces any client-sent X-Forwarded-For with the real client IP
+	reverse_proxy wallet_lab:8080
+}

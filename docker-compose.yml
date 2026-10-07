@@ -1,0 +1,47 @@
+# Public deployment on your own server.
+#
+# A) Nothing else on ports 80/443 — run the app behind the bundled Caddy, which
+#    gets and renews a Let's Encrypt certificate for DOMAIN automatically:
+#
+#      DOMAIN=lab.example.com docker compose --profile caddy up -d --build
+#
+# B) You already run a reverse proxy (Nginx, Traefik, an n8n setup…) — start
+#    only the app and point your proxy at http://127.0.0.1:8080:
+#
+#      docker compose up -d --build
+#
+# Put settings such as DOMAIN and LAB_WALLET_ADDRESS in a .env file next to
+# this one so they survive restarts.
+services:
+  wallet_lab:
+    build: .
+    restart: unless-stopped
+    environment:
+      # Caddy sits in front, so read the real client IP from X-Forwarded-For
+      TRUST_PROXY: "1"
+      LAB_WALLET_ADDRESS: ${LAB_WALLET_ADDRESS:-}
+      RUST_LOG: ${RUST_LOG:-wallet_lab=info,info}
+    # Loopback only: reachable by a proxy on this host, never directly from the
+    # internet (a direct client could otherwise forge X-Forwarded-For).
+    ports:
+      - "127.0.0.1:8080:8080"
+
+  caddy:
+    image: caddy:2
+    profiles: ["caddy"]
+    restart: unless-stopped
+    depends_on:
+      - wallet_lab
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN:-}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  caddy_data:
+  caddy_config:
